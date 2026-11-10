@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>1〜100 抽選機</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+1p:wght@400;700&display=swap">
+<style>
+/* Layout: 1カラム。中央に大きな抽選玉、その下に操作ボタン、履歴は折りたたみパネル */
+:root {
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --ink: #1d2540;
+  --muted: #66708a;
+  --line: #d5dae6;
+  --ball: #f2b425;
+  --ball-ink: #2a1f05;
+  --accent: #2f4cc4;
+  --accent-ink: #ffffff;
+  --danger: #c23a2b;
+  --hit: #2f4cc4;
+  --hit-ink: #ffffff;
+  --font-display: "Dela Gothic One", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --font-body: "M PLUS 1p", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12162a; --surface: #1b2039; --ink: #e8ebf5; --muted: #9aa3bf; --line: #2e3555;
+    --ball: #f5c04a; --ball-ink: #2a1f05; --accent: #7f97ff; --accent-ink: #0f1430;
+    --danger: #ff7a6b; --hit: #7f97ff; --hit-ink: #0f1430; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12162a; --surface: #1b2039; --ink: #e8ebf5; --muted: #9aa3bf; --line: #2e3555;
+  --ball: #f5c04a; --ball-ink: #2a1f05; --accent: #7f97ff; --accent-ink: #0f1430;
+  --danger: #ff7a6b; --hit: #7f97ff; --hit-ink: #0f1430; color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { min-height: 100%; margin: 0; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 40px;
+}
+.wrap { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: 1.4rem; margin: 0; letter-spacing: .02em; }
+.count { color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
+.count b { color: var(--ink); font-size: 1.05rem; }
+
+.stage { display: grid; place-items: center; padding-block: 12px; }
+.ball {
+  width: min(64vw, 260px); aspect-ratio: 1; max-width: 100%; border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.75) 0 8%, transparent 26%), var(--ball);
+  box-shadow: inset -14px -18px 0 rgba(0,0,0,.12), 0 14px 30px rgba(20,25,50,.18);
+  display: grid; place-items: center; color: var(--ball-ink);
+  font-family: var(--font-display); font-size: min(26vw, 108px); line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.ball.idle { background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.6) 0 8%, transparent 26%), var(--line); color: var(--muted); font-size: min(10vw, 40px); }
+.ball.pop { animation: pop .45s cubic-bezier(.2,1.4,.4,1); }
+.ball.spin { animation: shake .08s linear infinite; }
+@keyframes pop { from { transform: scale(.6); } to { transform: scale(1); } }
+@keyframes shake { 0%,100% { transform: translateX(0) } 50% { transform: translateX(3px) } }
+@media (prefers-reduced-motion: reduce) { .ball.pop, .ball.spin { animation: none; } }
+.status { text-align: center; color: var(--muted); min-height: 1.4em; margin: 0; }
+
+.actions { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+button { font: inherit; cursor: pointer; border-radius: 12px; padding: 14px 16px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 700; }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-size: 1.15rem; padding: 18px; }
+.danger-text { color: var(--danger); }
+
+.confirm { background: var(--surface); border: 1px solid var(--danger); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.confirm p { margin: 0; }
+.confirm .row button.yes { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+.history { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.history h2 { font-size: .8rem; letter-spacing: .08em; color: var(--muted); margin: 0; font-weight: 700; }
+.order { display: flex; flex-wrap: wrap; gap: 6px; font-variant-numeric: tabular-nums; }
+.order span { background: var(--bg); border-radius: 999px; padding: 2px 10px; font-size: .9rem; }
+.order span.latest { background: var(--ball); color: var(--ball-ink); font-weight: 700; }
+.empty { color: var(--muted); font-size: .9rem; margin: 0; }
+.board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; font-variant-numeric: tabular-nums; }
+.board div { aspect-ratio: 1; display: grid; place-items: center; font-size: .78rem; border-radius: 6px; color: var(--muted); border: 1px solid var(--line); }
+.board div.on { background: var(--hit); color: var(--hit-ink); border-color: var(--hit); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>1〜100 抽選機</h1>
+    <div class="count">残り <b id="remain">100</b> / 100</div>
+  </header>
+
+  <div class="stage"><div id="ball" class="ball idle" aria-live="polite">START</div></div>
+  <p id="status" class="status">「抽選する」を押してください</p>
+
+  <div class="actions">
+    <button id="draw" class="primary">抽選する</button>
+    <div class="row">
+      <button id="toggleHistory" aria-expanded="false">履歴を表示</button>
+      <button id="reset" class="danger-text">リセット</button>
+    </div>
+  </div>
+
+  <div id="confirm" class="confirm" hidden>
+    <p>出た数字をすべて消して、1〜100に戻します。よろしいですか？</p>
+    <div class="row">
+      <button id="cancelReset">やめる</button>
+      <button id="doReset" class="yes">リセットする</button>
+    </div>
+  </div>
+
+  <section id="history" class="history" hidden>
+    <h2>出た順</h2>
+    <div id="order" class="order"></div>
+    <h2>一覧</h2>
+    <div id="board" class="board"></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  const KEY = "number-draw-1-100";
+  let drawn = [];
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY) || "[]");
+    if (Array.isArray(saved)) drawn = saved.filter(n => Number.isInteger(n) && n >= 1 && n <= 100);
+  } catch (e) {}
+
+  const $ = id => document.getElementById(id);
+  const ball = $("ball"), statusEl = $("status"), drawBtn = $("draw");
+
+  const board = $("board");
+  for (let i = 1; i <= 100; i++) { const d = document.createElement("div"); d.textContent = i; d.id = "n" + i; board.appendChild(d); }
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(drawn)); } catch (e) {} }
+
+  function render() {
+    const remain = 100 - drawn.length;
+    $("remain").textContent = remain;
+    drawBtn.disabled = remain === 0;
+    const last = drawn[drawn.length - 1];
+    if (last) { ball.textContent = last; ball.classList.remove("idle"); }
+    else { ball.textContent = "START"; ball.classList.add("idle"); }
+    if (remain === 0) statusEl.textContent = "100個すべて出ました。リセットで最初からやり直せます";
+    else if (last) statusEl.textContent = drawn.length + "回目の数字";
+    else statusEl.textContent = "「抽選する」を押してください";
+
+    const order = $("order");
+    order.innerHTML = "";
+    if (!drawn.length) { const p = document.createElement("p"); p.className = "empty"; p.textContent = "まだ数字は出ていません"; order.appendChild(p); }
+    drawn.forEach((n, i) => { const s = document.createElement("span"); s.textContent = n; if (i === drawn.length - 1) s.className = "latest"; order.appendChild(s); });
+    for (let i = 1; i <= 100; i++) $("n" + i).classList.toggle("on", drawn.includes(i));
+  }
+
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  drawBtn.addEventListener("click", () => {
+    const pool = [];
+    for (let i = 1; i <= 100; i++) if (!drawn.includes(i)) pool.push(i);
+    if (!pool.length) return;
+    const buf = new Uint32Array(1);
+    crypto.getRandomValues(buf);
+    const pick = pool[buf[0] % pool.length];
+    drawn.push(pick);
+    save();
+    drawBtn.disabled = true;
+    if (reduce) { render(); return; }
+    ball.classList.remove("idle", "pop"); ball.classList.add("spin");
+    let t = 0;
+    const iv = setInterval(() => {
+      ball.textContent = pool[Math.floor(Math.random() * pool.length)];
+      if (++t >= 12) {
+        clearInterval(iv);
+        ball.classList.remove("spin"); void ball.offsetWidth; ball.classList.add("pop");
+        render();
+      }
+    }, 60);
+  });
+
+  $("toggleHistory").addEventListener("click", e => {
+    const h = $("history"); h.hidden = !h.hidden;
+    e.currentTarget.textContent = h.hidden ? "履歴を表示" : "履歴を隠す";
+    e.currentTarget.setAttribute("aria-expanded", String(!h.hidden));
+  });
+  $("reset").addEventListener("click", () => { $("confirm").hidden = false; });
+  $("cancelReset").addEventListener("click", () => { $("confirm").hidden = true; });
+  $("doReset").addEventListener("click", () => {
+    drawn = []; save(); $("confirm").hidden = true; ball.classList.remove("pop"); render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
