@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>1〜100 抽選機</title>
+<title>数字抽選機</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+1p:wght@400;700&display=swap">
 <style>
-/* Layout: 1カラム。中央に大きな抽選玉、その下に操作ボタン、履歴は折りたたみパネル */
+/* Layout: 1カラム。範囲設定 → 大きな抽選玉 → 操作ボタン → 折りたたみの履歴パネル */
 :root {
   --bg: #eef1f6;
   --surface: #ffffff;
@@ -18,6 +18,7 @@
   --accent: #2f4cc4;
   --accent-ink: #ffffff;
   --danger: #c23a2b;
+  --danger-ink: #ffffff;
   --hit: #2f4cc4;
   --hit-ink: #ffffff;
   --font-display: "Dela Gothic One", "Hiragino Sans", "Yu Gothic", sans-serif;
@@ -27,13 +28,13 @@
   :root:not([data-theme="light"]) {
     --bg: #12162a; --surface: #1b2039; --ink: #e8ebf5; --muted: #9aa3bf; --line: #2e3555;
     --ball: #f5c04a; --ball-ink: #2a1f05; --accent: #7f97ff; --accent-ink: #0f1430;
-    --danger: #ff7a6b; --hit: #7f97ff; --hit-ink: #0f1430; color-scheme: dark;
+    --danger: #ff7a6b; --danger-ink: #2a0b07; --hit: #7f97ff; --hit-ink: #0f1430; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #12162a; --surface: #1b2039; --ink: #e8ebf5; --muted: #9aa3bf; --line: #2e3555;
   --ball: #f5c04a; --ball-ink: #2a1f05; --accent: #7f97ff; --accent-ink: #0f1430;
-  --danger: #ff7a6b; --hit: #7f97ff; --hit-ink: #0f1430; color-scheme: dark;
+  --danger: #ff7a6b; --danger-ink: #2a0b07; --hit: #7f97ff; --hit-ink: #0f1430; color-scheme: dark;
 }
 *, *::before, *::after { box-sizing: border-box; }
 html, body { min-height: 100%; margin: 0; }
@@ -46,11 +47,22 @@ body {
 }
 .wrap { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
 header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-h1 { font-family: var(--font-display); font-weight: 400; font-size: 1.4rem; margin: 0; letter-spacing: .02em; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: 1.4rem; margin: 0; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
 .count { color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
 .count b { color: var(--ink); font-size: 1.05rem; }
 
-.stage { display: grid; place-items: center; padding-block: 12px; }
+.range { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.range-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.range label { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--muted); font-weight: 700; letter-spacing: .04em; }
+.range input { font: inherit; font-size: 1.15rem; font-weight: 700; width: 7.5em; max-width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-variant-numeric: tabular-nums; }
+.range input:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.range input:disabled { opacity: .6; }
+.range input[aria-invalid="true"] { border-color: var(--danger); }
+.tilde { font-size: 1.2rem; color: var(--muted); align-self: flex-end; padding-bottom: 8px; }
+.note { margin: 0; font-size: .82rem; color: var(--muted); }
+.note.error { color: var(--danger); font-weight: 700; }
+
+.stage { display: grid; place-items: center; padding-block: 8px; }
 .ball {
   width: min(64vw, 260px); aspect-ratio: 1; max-width: 100%; border-radius: 50%;
   background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.75) 0 8%, transparent 26%), var(--ball);
@@ -59,6 +71,8 @@ h1 { font-family: var(--font-display); font-weight: 400; font-size: 1.4rem; marg
   font-family: var(--font-display); font-size: min(26vw, 108px); line-height: 1;
   font-variant-numeric: tabular-nums;
 }
+.ball.d3 { font-size: min(20vw, 84px); }
+.ball.d4 { font-size: min(15vw, 64px); }
 .ball.idle { background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.6) 0 8%, transparent 26%), var(--line); color: var(--muted); font-size: min(10vw, 40px); }
 .ball.pop { animation: pop .45s cubic-bezier(.2,1.4,.4,1); }
 .ball.spin { animation: shake .08s linear infinite; }
@@ -77,7 +91,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 
 .confirm { background: var(--surface); border: 1px solid var(--danger); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
 .confirm p { margin: 0; }
-.confirm .row button.yes { background: var(--danger); border-color: var(--danger); color: #fff; }
+.confirm .row button.yes { background: var(--danger); border-color: var(--danger); color: var(--danger-ink); }
 
 .history { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 .history h2 { font-size: .8rem; letter-spacing: .08em; color: var(--muted); margin: 0; font-weight: 700; }
@@ -85,7 +99,8 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .order span { background: var(--bg); border-radius: 999px; padding: 2px 10px; font-size: .9rem; }
 .order span.latest { background: var(--ball); color: var(--ball-ink); font-weight: 700; }
 .empty { color: var(--muted); font-size: .9rem; margin: 0; }
-.board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; font-variant-numeric: tabular-nums; }
+.board-scroll { max-height: 420px; overflow-y: auto; }
+.board { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 4px; font-variant-numeric: tabular-nums; }
 .board div { aspect-ratio: 1; display: grid; place-items: center; font-size: .78rem; border-radius: 6px; color: var(--muted); border: 1px solid var(--line); }
 .board div.on { background: var(--hit); color: var(--hit-ink); border-color: var(--hit); font-weight: 700; }
 </style>
@@ -94,9 +109,18 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 
 <div class="wrap">
   <header>
-    <h1>1〜100 抽選機</h1>
-    <div class="count">残り <b id="remain">100</b> / 100</div>
+    <h1 id="heading">1〜100 抽選機</h1>
+    <div class="count">残り <b id="remain">100</b> / <span id="total">100</span></div>
   </header>
+
+  <section class="range" aria-label="抽選する数字の範囲">
+    <div class="range-row">
+      <label for="minInput">最小値<input id="minInput" type="number" inputmode="numeric" min="0" step="1" value="1"></label>
+      <span class="tilde">〜</span>
+      <label for="maxInput">最大値<input id="maxInput" type="number" inputmode="numeric" min="0" step="1" value="100"></label>
+    </div>
+    <p id="rangeNote" class="note">0以上の整数で、範囲は1000個まで設定できます</p>
+  </section>
 
   <div class="stage"><div id="ball" class="ball idle" aria-live="polite">START</div></div>
   <p id="status" class="status">「抽選する」を押してください</p>
@@ -110,7 +134,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
   </div>
 
   <div id="confirm" class="confirm" hidden>
-    <p>出た数字をすべて消して、1〜100に戻します。よろしいですか？</p>
+    <p>出た数字をすべて消して、最初からやり直します。よろしいですか？</p>
     <div class="row">
       <button id="cancelReset">やめる</button>
       <button id="doReset" class="yes">リセットする</button>
@@ -121,62 +145,118 @@ button:disabled { opacity: .45; cursor: not-allowed; }
     <h2>出た順</h2>
     <div id="order" class="order"></div>
     <h2>一覧</h2>
-    <div id="board" class="board"></div>
+    <div class="board-scroll"><div id="board" class="board"></div></div>
   </section>
 </div>
 
 <script>
 (function () {
   const KEY = "number-draw-1-100";
-  let drawn = [];
+  const LIMIT = 1000;
+  const state = { min: 1, max: 100, drawn: [] };
+
   try {
-    const saved = JSON.parse(localStorage.getItem(KEY) || "[]");
-    if (Array.isArray(saved)) drawn = saved.filter(n => Number.isInteger(n) && n >= 1 && n <= 100);
+    const saved = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (Array.isArray(saved)) {
+      // 旧バージョン（1〜100固定）の保存形式
+      state.drawn = saved.filter(n => Number.isInteger(n) && n >= 1 && n <= 100);
+    } else if (saved && Number.isInteger(saved.min) && Number.isInteger(saved.max) &&
+               saved.min >= 0 && saved.min <= saved.max && saved.max - saved.min + 1 <= LIMIT) {
+      state.min = saved.min; state.max = saved.max;
+      state.drawn = (Array.isArray(saved.drawn) ? saved.drawn : [])
+        .filter(n => Number.isInteger(n) && n >= state.min && n <= state.max);
+    }
   } catch (e) {}
 
   const $ = id => document.getElementById(id);
   const ball = $("ball"), statusEl = $("status"), drawBtn = $("draw");
+  const minInput = $("minInput"), maxInput = $("maxInput"), note = $("rangeNote");
+  const DEFAULT_NOTE = "0以上の整数で、範囲は1000個まで設定できます";
+  minInput.value = state.min; maxInput.value = state.max;
 
-  const board = $("board");
-  for (let i = 1; i <= 100; i++) { const d = document.createElement("div"); d.textContent = i; d.id = "n" + i; board.appendChild(d); }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
 
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(drawn)); } catch (e) {} }
+  // 入力欄を読み取り、正しければ state に反映。エラー文を返す（問題なければ空文字）
+  function readRange() {
+    const minRaw = minInput.value.trim(), maxRaw = maxInput.value.trim();
+    const min = Number(minRaw), max = Number(maxRaw);
+    let err = "", bad = [];
+    if (minRaw === "" || !Number.isInteger(min) || min < 0) { err = "最小値は0以上の整数で入力してください"; bad.push(minInput); }
+    else if (maxRaw === "" || !Number.isInteger(max) || max < 0) { err = "最大値は0以上の整数で入力してください"; bad.push(maxInput); }
+    else if (min > max) { err = "最小値は最大値以下にしてください"; bad.push(minInput, maxInput); }
+    else if (max - min + 1 > LIMIT) { err = "範囲が" + (max - min + 1) + "個あります。1000個以内にしてください"; bad.push(minInput, maxInput); }
+    [minInput, maxInput].forEach(el => el.setAttribute("aria-invalid", bad.includes(el) ? "true" : "false"));
+    if (!err && (min !== state.min || max !== state.max)) {
+      state.min = min; state.max = max; state.drawn = []; save(); buildBoard();
+    }
+    return err;
+  }
+
+  function buildBoard() {
+    const board = $("board");
+    board.innerHTML = "";
+    for (let i = state.min; i <= state.max; i++) {
+      const d = document.createElement("div"); d.textContent = i; d.dataset.n = i; board.appendChild(d);
+    }
+  }
+
+  function setBall(n) {
+    ball.classList.remove("d3", "d4");
+    const len = String(n).length;
+    if (len === 3) ball.classList.add("d3");
+    if (len >= 4) ball.classList.add("d4");
+    ball.textContent = n;
+  }
 
   function render() {
-    const remain = 100 - drawn.length;
+    const err = readRange();
+    const total = state.max - state.min + 1;
+    const remain = total - state.drawn.length;
+    const locked = state.drawn.length > 0;
+
+    $("heading").textContent = state.min + "〜" + state.max + " 抽選機";
     $("remain").textContent = remain;
-    drawBtn.disabled = remain === 0;
-    const last = drawn[drawn.length - 1];
-    if (last) { ball.textContent = last; ball.classList.remove("idle"); }
-    else { ball.textContent = "START"; ball.classList.add("idle"); }
-    if (remain === 0) statusEl.textContent = "100個すべて出ました。リセットで最初からやり直せます";
-    else if (last) statusEl.textContent = drawn.length + "回目の数字";
+    $("total").textContent = total;
+    minInput.disabled = locked; maxInput.disabled = locked;
+    note.classList.toggle("error", !!err);
+    note.textContent = err || (locked ? "抽選中は範囲を変更できません。変更するにはリセットしてください" : DEFAULT_NOTE);
+    drawBtn.disabled = !!err || remain === 0;
+
+    const last = state.drawn[state.drawn.length - 1];
+    if (last !== undefined) { setBall(last); ball.classList.remove("idle"); }
+    else { ball.classList.remove("d3", "d4"); ball.textContent = "START"; ball.classList.add("idle"); }
+    if (err) statusEl.textContent = "範囲を正しく入力すると抽選できます";
+    else if (remain === 0) statusEl.textContent = total + "個すべて出ました。リセットで最初からやり直せます";
+    else if (last !== undefined) statusEl.textContent = state.drawn.length + "回目の数字";
     else statusEl.textContent = "「抽選する」を押してください";
 
     const order = $("order");
     order.innerHTML = "";
-    if (!drawn.length) { const p = document.createElement("p"); p.className = "empty"; p.textContent = "まだ数字は出ていません"; order.appendChild(p); }
-    drawn.forEach((n, i) => { const s = document.createElement("span"); s.textContent = n; if (i === drawn.length - 1) s.className = "latest"; order.appendChild(s); });
-    for (let i = 1; i <= 100; i++) $("n" + i).classList.toggle("on", drawn.includes(i));
+    if (!state.drawn.length) { const p = document.createElement("p"); p.className = "empty"; p.textContent = "まだ数字は出ていません"; order.appendChild(p); }
+    state.drawn.forEach((n, i) => { const s = document.createElement("span"); s.textContent = n; if (i === state.drawn.length - 1) s.className = "latest"; order.appendChild(s); });
+    const set = new Set(state.drawn);
+    $("board").querySelectorAll("div").forEach(d => d.classList.toggle("on", set.has(Number(d.dataset.n))));
   }
 
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   drawBtn.addEventListener("click", () => {
-    const pool = [];
-    for (let i = 1; i <= 100; i++) if (!drawn.includes(i)) pool.push(i);
+    if (readRange()) { render(); return; }
+    const set = new Set(state.drawn), pool = [];
+    for (let i = state.min; i <= state.max; i++) if (!set.has(i)) pool.push(i);
     if (!pool.length) return;
     const buf = new Uint32Array(1);
     crypto.getRandomValues(buf);
     const pick = pool[buf[0] % pool.length];
-    drawn.push(pick);
+    state.drawn.push(pick);
     save();
     drawBtn.disabled = true;
+    minInput.disabled = true; maxInput.disabled = true;
     if (reduce) { render(); return; }
     ball.classList.remove("idle", "pop"); ball.classList.add("spin");
     let t = 0;
     const iv = setInterval(() => {
-      ball.textContent = pool[Math.floor(Math.random() * pool.length)];
+      setBall(pool[Math.floor(Math.random() * pool.length)]);
       if (++t >= 12) {
         clearInterval(iv);
         ball.classList.remove("spin"); void ball.offsetWidth; ball.classList.add("pop");
@@ -184,6 +264,9 @@ button:disabled { opacity: .45; cursor: not-allowed; }
       }
     }, 60);
   });
+
+  minInput.addEventListener("input", render);
+  maxInput.addEventListener("input", render);
 
   $("toggleHistory").addEventListener("click", e => {
     const h = $("history"); h.hidden = !h.hidden;
@@ -193,9 +276,10 @@ button:disabled { opacity: .45; cursor: not-allowed; }
   $("reset").addEventListener("click", () => { $("confirm").hidden = false; });
   $("cancelReset").addEventListener("click", () => { $("confirm").hidden = true; });
   $("doReset").addEventListener("click", () => {
-    drawn = []; save(); $("confirm").hidden = true; ball.classList.remove("pop"); render();
+    state.drawn = []; save(); $("confirm").hidden = true; ball.classList.remove("pop"); render();
   });
 
+  buildBoard();
   render();
 })();
 </script>
